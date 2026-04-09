@@ -136,7 +136,7 @@ export class GeminiEmailScanner {
     this.config = config;
     this.genAI = new GoogleGenerativeAI(config.geminiApiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: "gemini-2.5-pro",
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       generationConfig: {
         temperature: 0.1,       // Low temperature for accurate extraction
         topP: 0.95,
