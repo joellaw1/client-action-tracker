@@ -70,7 +70,7 @@ export interface SheetEmailScan {
   emailSubject: string;
   emailDate: string;
   clientName: string;
-  type: "Client Request" | "Attorney Commitment" | "Proactive Trigger";
+  type: "Client Request" | "Attorney Commitment" | "Proactive Trigger" | "Resolution (Sent/Done)";
   extractedQuote: string;
   suggestedAction: string;
   timeframe: string;
