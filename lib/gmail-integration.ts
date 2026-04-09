@@ -109,10 +109,11 @@ export class GmailClient {
     const query = `after:${after}`;
 
     try {
+      const maxResults = hoursBack > 48 ? 500 : 50; // Larger fetch for backfill scans
       const listResponse = await this.gmail.users.messages.list({
         userId: "me",
         q: query,
-        maxResults: 50,
+        maxResults,
       });
 
       const messageIds = listResponse.data.messages || [];

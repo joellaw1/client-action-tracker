@@ -34,8 +34,9 @@ export async function POST() {
       })),
     });
 
-    // Fetch recent emails (last 2 hours)
-    const emails = await gmail.fetchRecentEmails(2);
+    // Fetch emails — default 60 days for backfill, env override available
+    const hoursBack = parseInt(process.env.SCAN_HOURS_BACK || "1440", 10); // 1440h = 60 days
+    const emails = await gmail.fetchRecentEmails(hoursBack);
 
     if (emails.length === 0) {
       return NextResponse.json({
@@ -65,7 +66,10 @@ export async function POST() {
           emailSubject: result.emailSubject,
           emailDate: result.emailDate,
           clientName: matchedClient?.name || item.client || "Unknown",
-          type: item.type === "client_request" ? "Client Request" : "Attorney Commitment",
+          type: item.type === "client_request" ? "Client Request"
+              : item.type === "attorney_commitment" ? "Attorney Commitment"
+              : item.type === "resolution" ? "Resolution (Sent/Done)"
+              : "Proactive Trigger",
           extractedQuote: item.sourceQuote,
           suggestedAction: item.description,
           timeframe: item.timeframe || "None specified",

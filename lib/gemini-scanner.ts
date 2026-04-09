@@ -18,7 +18,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ExtractedActionItem {
-  type: "client_request" | "attorney_commitment" | "proactive_trigger";
+  type: "client_request" | "attorney_commitment" | "proactive_trigger" | "resolution";
   client: string | null;
   matter: string | null;
   description: string;
@@ -63,7 +63,7 @@ function buildExtractionPrompt(config: ScannerConfig): string {
     .map(c => `- ${c.name} (${c.domain}): matters include ${c.matters.join(", ")}`)
     .join("\n");
 
-  return `You are a legal assistant AI for a small corporate/transactional law firm. You are analyzing attorney email to extract action items and identify proactive legal work.
+  return `You are a legal assistant AI for a small corporate/transactional law firm (Paradox Principals). You are analyzing attorney email to extract action items, detect deadlines, and identify whether items have already been completed.
 
 FIRM ATTORNEY EMAILS:
 ${config.firmAttorneyEmails.map(e => `- ${e}`).join("\n")}
@@ -73,13 +73,22 @@ ${clientContext}
 
 ANALYZE THE EMAIL BELOW AND EXTRACT:
 
-1. **CLIENT REQUESTS** — Any request from a client or third party for the attorney to do something.
-   Look for language like: "Can you...", "Please prepare...", "We need...", "Could you send...", "When can we expect...", "Is it possible to..."
+1. **CLIENT REQUESTS** — Any request from a client, opposing counsel, or third party for the attorney to do something. Be thorough — capture everything.
+   Trigger language includes:
+   - Direct asks: "Can you...", "Please prepare...", "We need...", "Could you send...", "Is it possible to..."
+   - Deadline questions: "When can we expect...", "When can this be sent...", "How soon can you...", "What's the timeline for..."
+   - Implied requests: "We're waiting on...", "Following up on...", "Just checking on the status of..."
+   - Document requests: "Can you send the draft...", "We need the redline by...", "Please circulate..."
+   - Scheduling: "Can we set up a call...", "Are you available to...", "Let's schedule..."
 
 2. **ATTORNEY COMMITMENTS** — Any promise or commitment the attorney made to deliver something.
-   Look for language like: "I'll get you...", "We'll have that...", "I'll send...", "We'll prepare...", "Let me draft...", "I'll follow up with...", "Expect it by..."
+   Trigger language: "I'll get you...", "We'll have that...", "I'll send...", "We'll prepare...", "Let me draft...", "I'll follow up with...", "Expect it by...", "Will circulate by...", "Working on it now..."
 
-3. **PROACTIVE TRIGGERS** — Situations mentioned in the email that should trigger additional legal work, even though no one explicitly asked for it. This is CRITICAL for providing proactive counsel.
+3. **RESOLUTION INDICATORS** — If the email shows that a previously requested item has been COMPLETED or SENT, flag it so we can mark it done.
+   Trigger language: "Attached please find...", "Here's the draft...", "Just sent over...", "See attached...", "Circulating now...", "Done — see below...", "Filed today...", "Sent to [recipient]..."
+   For these, set type to "resolution" and describe what was completed.
+
+4. **PROACTIVE TRIGGERS** — Situations mentioned that should trigger additional legal work, even though no one explicitly asked.
    Examples:
    - Client mentions an acquisition → due diligence, board resolutions, HSR assessment
    - Client mentions hiring → offer letters, PIIA, equity grants
@@ -90,12 +99,12 @@ ANALYZE THE EMAIL BELOW AND EXTRACT:
    - Client mentions a new product launch → IP review, terms of service, privacy policy
 
 For each item, provide:
-- type: "client_request" | "attorney_commitment" | "proactive_trigger"
+- type: "client_request" | "attorney_commitment" | "proactive_trigger" | "resolution"
 - client: The client name if identifiable (match to known clients when possible)
 - matter: The relevant matter/case if identifiable
-- description: A clear, actionable description of what needs to be done
-- timeframe: Any deadline or timeframe mentioned (null if none)
-- urgency: "high" (explicit deadline within 1 week), "medium" (deadline within 1 month or implied urgency), "low" (no deadline)
+- description: A clear, actionable description of what needs to be done (or what was completed, for resolutions)
+- timeframe: Any deadline or timeframe mentioned (null if none). Include implicit deadlines like "ASAP", "EOD", "end of week", "before the board meeting"
+- urgency: "high" (explicit deadline within 1 week, or words like ASAP/urgent/time-sensitive), "medium" (deadline within 1 month or implied urgency), "low" (no deadline)
 - confidence: Your confidence in this extraction (0.0 to 1.0)
 - sourceQuote: The exact quote from the email that triggered this extraction (keep short)
 - reasoning: Brief explanation of why you flagged this
