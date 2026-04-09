@@ -466,7 +466,7 @@ export default function Home() {
             </div>
             <div>
               <p className="font-bold text-gray-900 text-sm">ActionTracker</p>
-              <p className="text-xs text-gray-500">TalksOnLaw</p>
+              <p className="text-xs text-gray-500">Paradox Principals</p>
             </div>
           </div>
         </div>
@@ -487,7 +487,7 @@ export default function Home() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Joel Cohen</p>
-              <p className="text-xs text-gray-500">joel@talksonlaw.com</p>
+              <p className="text-xs text-gray-500">joel@paradoxprincipals.com</p>
             </div>
           </div>
         </div>

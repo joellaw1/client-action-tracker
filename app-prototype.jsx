@@ -39,7 +39,7 @@ const EMAIL_SUGGESTIONS = [
     status: "pending"
   },
   {
-    id: 103, clientId: 1, emailFrom: "joel@talksonlaw.com", emailSubject: "RE: Meridian subsidiary question",
+    id: 103, clientId: 1, emailFrom: "joel@paradoxprincipals.com", emailSubject: "RE: Meridian subsidiary question",
     extractedText: "\"I'll get you the amended operating agreement by end of next week.\"",
     suggestedAction: "Deliver amended operating agreement to Meridian Holdings",
     timeframe: "By end of next week (April 17)", confidence: 0.92, type: "attorney_commitment", scannedAt: "2026-04-08T16:45:00",
@@ -594,7 +594,7 @@ const ScannerPage = () => {
               <p>Model: <span className="font-medium">Gemini 2.5 Pro</span></p>
               <p>Scan frequency: <span className="font-medium">Every 30 minutes</span></p>
               <p>Min confidence: <span className="font-medium">75%</span></p>
-              <p>Accounts: <span className="font-medium">joel@talksonlaw.com</span></p>
+              <p>Accounts: <span className="font-medium">joel@paradoxprincipals.com</span></p>
             </div>
           </div>
         </div>
@@ -821,7 +821,7 @@ export default function App() {
             </div>
             <div>
               <h2 className="font-bold text-gray-900 text-sm leading-tight">ActionTracker</h2>
-              <p className="text-xs text-gray-500">TalksOnLaw</p>
+              <p className="text-xs text-gray-500">Paradox Principals</p>
             </div>
           </div>
         </div>
@@ -860,7 +860,7 @@ export default function App() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Joel Cohen</p>
-              <p className="text-xs text-gray-500">joel@talksonlaw.com</p>
+              <p className="text-xs text-gray-500">joel@paradoxprincipals.com</p>
             </div>
           </div>
         </div>
