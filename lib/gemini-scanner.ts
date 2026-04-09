@@ -138,7 +138,7 @@ export class GeminiEmailScanner {
   }
 
   /**
-   * Scan a single email and extract action items + proactive suggestions
+   * Scan a single email with retry logic for rate limits (429 errors)
    */
   async scanEmail(email: {
     id: string;
@@ -152,46 +152,74 @@ export class GeminiEmailScanner {
     const prompt = buildExtractionPrompt(this.config);
     const emailText = `From: ${email.from}\nTo: ${email.to}\nSubject: ${email.subject}\nDate: ${email.date}\n\n${email.body}`;
 
-    try {
-      const result = await this.model.generateContent(prompt + emailText);
-      const response = result.response;
-      const text = response.text();
-      const parsed = JSON.parse(text);
+    const MAX_RETRIES = 3;
 
-      // Filter by minimum confidence
-      const actionItems = (parsed.actionItems || []).filter(
-        (item: ExtractedActionItem) => item.confidence >= this.config.minConfidence
-      );
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const result = await this.model.generateContent(prompt + emailText);
+        const response = result.response;
+        const text = response.text();
+        const parsed = JSON.parse(text);
 
-      const proactiveSuggestions = this.config.includeProactive
-        ? (parsed.proactiveSuggestions || []).filter(
-            (s: ProactiveSuggestion) => s.confidence >= this.config.minConfidence
-          )
-        : [];
+        // Filter by minimum confidence
+        const actionItems = (parsed.actionItems || []).filter(
+          (item: ExtractedActionItem) => item.confidence >= this.config.minConfidence
+        );
 
-      return {
-        emailId: email.id,
-        emailFrom: email.from,
-        emailSubject: email.subject,
-        emailDate: email.date,
-        threadId: email.threadId,
-        actionItems,
-        proactiveSuggestions,
-        scannedAt: new Date().toISOString(),
-      };
-    } catch (error) {
-      console.error(`Error scanning email ${email.id}:`, error);
-      return {
-        emailId: email.id,
-        emailFrom: email.from,
-        emailSubject: email.subject,
-        emailDate: email.date,
-        threadId: email.threadId,
-        actionItems: [],
-        proactiveSuggestions: [],
-        scannedAt: new Date().toISOString(),
-      };
+        const proactiveSuggestions = this.config.includeProactive
+          ? (parsed.proactiveSuggestions || []).filter(
+              (s: ProactiveSuggestion) => s.confidence >= this.config.minConfidence
+            )
+          : [];
+
+        return {
+          emailId: email.id,
+          emailFrom: email.from,
+          emailSubject: email.subject,
+          emailDate: email.date,
+          threadId: email.threadId,
+          actionItems,
+          proactiveSuggestions,
+          scannedAt: new Date().toISOString(),
+        };
+      } catch (error: any) {
+        const is429 = error?.status === 429 ||
+          error?.message?.includes("429") ||
+          error?.message?.includes("Too Many Requests") ||
+          error?.message?.includes("RESOURCE_EXHAUSTED");
+
+        if (is429 && attempt < MAX_RETRIES) {
+          const delay = Math.pow(2, attempt + 1) * 5000; // 10s, 20s, 40s
+          console.log(`Rate limited on email ${email.id}, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        console.error(`Error scanning email ${email.id} (attempt ${attempt}):`, error);
+        return {
+          emailId: email.id,
+          emailFrom: email.from,
+          emailSubject: email.subject,
+          emailDate: email.date,
+          threadId: email.threadId,
+          actionItems: [],
+          proactiveSuggestions: [],
+          scannedAt: new Date().toISOString(),
+        };
+      }
     }
+
+    // Should not reach here, but TypeScript needs it
+    return {
+      emailId: email.id,
+      emailFrom: email.from,
+      emailSubject: email.subject,
+      emailDate: email.date,
+      threadId: email.threadId,
+      actionItems: [],
+      proactiveSuggestions: [],
+      scannedAt: new Date().toISOString(),
+    };
   }
 
   /**
@@ -219,18 +247,15 @@ export class GeminiEmailScanner {
     const uniqueEmails = Array.from(threadMap.values());
     const results: ScanResult[] = [];
 
-    // Process in batches of 5 to respect rate limits
-    const BATCH_SIZE = 5;
-    for (let i = 0; i < uniqueEmails.length; i += BATCH_SIZE) {
-      const batch = uniqueEmails.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(email => this.scanEmail(email))
-      );
-      results.push(...batchResults);
+    // Process emails sequentially to respect Gemini free-tier rate limits
+    for (let i = 0; i < uniqueEmails.length; i++) {
+      console.log(`Scanning email ${i + 1}/${uniqueEmails.length}: ${uniqueEmails[i].subject}`);
+      const result = await this.scanEmail(uniqueEmails[i]);
+      results.push(result);
 
-      // Rate limit pause between batches
-      if (i + BATCH_SIZE < uniqueEmails.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Pause between emails to avoid rate limits
+      if (i < uniqueEmails.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 
