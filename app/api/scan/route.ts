@@ -34,8 +34,8 @@ export async function POST() {
       })),
     });
 
-    // Fetch emails — default 60 days for backfill, env override available
-    const hoursBack = parseInt(process.env.SCAN_HOURS_BACK || "1440", 10); // 1440h = 60 days
+    // Fetch emails — default 7 days; set SCAN_HOURS_BACK=1440 for 60-day backfill
+    const hoursBack = parseInt(process.env.SCAN_HOURS_BACK || "168", 10); // 168h = 7 days
     const emails = await gmail.fetchRecentEmails(hoursBack);
 
     if (emails.length === 0) {

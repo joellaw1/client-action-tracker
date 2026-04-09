@@ -198,7 +198,7 @@ export class GeminiEmailScanner {
           error?.message?.includes("RESOURCE_EXHAUSTED");
 
         if (is429 && attempt < MAX_RETRIES) {
-          const delay = Math.pow(2, attempt + 1) * 5000; // 10s, 20s, 40s
+          const delay = Math.pow(2, attempt + 1) * 15000; // 30s, 60s, 120s
           console.log(`Rate limited on email ${email.id}, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
@@ -262,9 +262,11 @@ export class GeminiEmailScanner {
       const result = await this.scanEmail(uniqueEmails[i]);
       results.push(result);
 
-      // Pause between emails to avoid rate limits
+      // Pause between emails to avoid Gemini free-tier rate limits
+      // 15s is the minimum safe interval for free-tier Flash
       if (i < uniqueEmails.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        const delay = parseInt(process.env.SCAN_DELAY_MS || "15000", 10);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
